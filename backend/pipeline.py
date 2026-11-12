@@ -56,6 +56,10 @@ class TranscriptPipeline:
         self._bg_tasks: set[asyncio.Task] = set()
         self._closed = False
 
+    @property
+    def provider_name(self) -> str:
+        return self._provider.name
+
     # -- lifecycle --------------------------------------------------------
     async def start(self) -> bool:
         """Open the provider session. Returns False when it cannot be opened."""
@@ -145,6 +149,22 @@ class TranscriptPipeline:
             await session.end_utterance()
         except Exception:
             log.exception("stt end_utterance failed for %s", self.client_id)
+
+    async def submit_partial(self, text: str) -> None:
+        """Feed a client-side (browser STT) interim transcript."""
+        if self._closed:
+            return
+        if self._utterance_started_at is None:
+            self._utterance_started_at = time.monotonic()
+        await self._on_partial(text)
+
+    async def submit_final(self, text: str) -> None:
+        """Feed a client-side (browser STT) committed transcript."""
+        if self._closed:
+            return
+        if self._utterance_started_at is None:
+            self._utterance_started_at = time.monotonic()
+        await self._on_final(text)
 
     # -- callbacks --------------------------------------------------------
     async def _on_partial(self, text: str) -> None:

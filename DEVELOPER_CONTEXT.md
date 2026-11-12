@@ -88,8 +88,8 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
 | Realtime | **Native WebSockets** (`fastapi.WebSocket`) | Render supports WS natively; no extra infra |
 | Frontend | **Vanilla HTML/CSS/JS, no build step** | zero Node build on Render, fast cold start, easy debugging |
 | Audio capture | **AudioContext + ScriptProcessor → mono PCM16LE @ 16 kHz, 200 ms frames** | every STT vendor accepts raw PCM; MediaRecorder webm fragments lose their container header after the first chunk |
-| STT | **Soniox realtime** behind an adapter interface (Deepgram adapter is a Phase-2 stub, not written) | native TH+VI realtime; adapter keeps lock-in low |
-| Translation | Provider adapter — LLM translate (preferred) or Google/DeepL | one adapter, swap by env var |
+| STT | **Browser Web Speech API** by default (`STT_PROVIDER=browser`, free, no key); Soniox realtime behind the same adapter interface for server-side audio | deletes STT cost and upload; Soniox stays for browsers without Web Speech |
+| Translation | **Lingva** (key-free Google proxy, MyMemory fallback) by default; LLM adapter for quality | zero cost out of the box, one env var to upgrade |
 | TTS | **`edge-tts`** (free, good th-VN voices) | optional, Phase 3 |
 | State | **In-memory dicts** (`rooms`, `clients`) | no DB in MVP; single instance only |
 | Config | `pydantic-settings` reading env vars | fail fast on missing keys |
@@ -112,6 +112,7 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
 | 2026-11-12 | No DB in MVP | removes spin-down/persistence issues |
 | 2026-11-12 | Start with Soniox | native Thai↔Vietnamese realtime support |
 | 2026-11-12 | Raw PCM16 instead of MediaRecorder opus | webm chunks after the first one have no container header, which most STT APIs cannot parse |
+| 2026-11-12 | Default to browser STT + Lingva | $0, no keys, no audio upload; Soniox/LLM remain one env var away |
 
 ---
 
@@ -179,6 +180,7 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
 ```json
 { "type": "join", "lang": "th", "echo_self": true }
 { "type": "set_lang", "lang": "vi" }
+{ "type": "transcript", "text": "xin chào", "is_final": true }
 { "type": "end_utterance" }
 { "type": "ping", "t": 1731400000000 }
 { "type": "leave" }```
@@ -192,6 +194,7 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
   "room_id": "abc123",
   "lang": "th",
   "sample_rate": 16000,
+  "stt": "browser",
   "targets": ["th", "vi", "en"],
   "participants": [{ "client_id": "c_9f8e", "lang": "vi" }]
 }
@@ -280,10 +283,10 @@ Set locally in `.env`, on Render in **Environment → Environment Variables**. V
 
 | Variable | Required | Example | Notes |
 |----------|----------|---------|-------|
-| `STT_PROVIDER` | yes | `mock` | `mock` (offline) \| `soniox` |
+| `STT_PROVIDER` | yes | `browser` | `browser` (free, client-side) \| `mock` \| `soniox` |
 | `STT_API_KEY` | for soniox | *(secret)* | provider key |
 | `STT_MODEL` | no | `stt-rt-v4` | provider model id |
-| `TRANSLATE_PROVIDER` | yes | `passthrough` | `passthrough` (offline) \| `llm` |
+| `TRANSLATE_PROVIDER` | yes | `lingva` | `lingva` (free) \| `passthrough` \| `llm` |
 | `TRANSLATE_API_KEY` | for llm | *(secret)* | key for chosen provider |
 | `TRANSLATE_MODEL` | no | `gpt-4o-mini` | OpenAI-compatible model id |
 | `TRANSLATE_BASE_URL` | no | `https://api.openai.com/v1` | any `/chat/completions` gateway |
@@ -450,10 +453,15 @@ uvicorn backend.main:app --reload --port 8000 --ws-max-size 1048576
 Open `http://localhost:8000` (mic works on `localhost` without HTTPS).
 Two windows, same `?room=xxx`, one set to Thai and one to Vietnamese.
 
-With the defaults (`STT_PROVIDER=mock`, `TRANSLATE_PROVIDER=passthrough`) the
-app is fully runnable offline: transcripts read `[mock th final · 2.4s]` and
-translations read `[vi] …`. That proves the audio path, room routing, and
-broadcast without spending money. `/healthz` reports the active providers.
+With the defaults (`STT_PROVIDER=browser`, `TRANSLATE_PROVIDER=lingva`) you get
+real Thai↔Vietnamese translation for $0: Chrome/Edge does the recognition
+(Web Speech API) and posts text, and Lingva translates it server-side.
+No API key is required anywhere.
+
+For a fully offline demo set `STT_PROVIDER=mock` + `TRANSLATE_PROVIDER=passthrough`
+— transcripts then read `[mock th final · 2.4s]` and translations `[vi] …`.
+`/healthz` reports the active providers, and `joined.stt` tells the browser
+whether to stream audio or recognise locally.
 
 `backend/requirements.txt` (keep minimal — 512 MB budget):
 
@@ -536,10 +544,10 @@ Minimum bar before deploy: `python -m pytest -q` green + manual two-tab test pas
 | Item | Estimate |
 |------|----------|
 | Render free web service | $0 (750 h/mo) |
-| Soniox STT | ~$0.16–0.18 / audio hour |
-| Translation | ~$0.01–0.05 / 1k utterances (LLM) or ~$20/1M chars (cloud MT) |
-| TTS (edge-tts) | $0 |
-| **Typical 1-hour meeting** | **≈ $0.20–0.40** |
+| **Free mode default** (browser STT + Lingva) | **$0** — no keys, no metering |
+| Soniox STT (optional upgrade) | ~$0.16–0.18 / audio hour |
+| Translation via LLM (optional) | ~$0.01–0.05 / 1k utterances |
+| TTS (edge-tts, Phase 3) | $0 |
 
 Continuous all-day streaming is the cost risk — add a session cap or idle auto-stop in Phase 4.
 
@@ -555,6 +563,8 @@ Continuous all-day streaming is the cost risk — add a session cap or idle auto
 | Thai segmentation errors from STT | Medium | rely on provider tokenizer, never re-split Thai text |
 | Vietnamese diacritics mangled | Medium | UTF-8 end-to-end, no normalization on display |
 | Provider outage | Medium | adapters fall back to offline providers at startup; runtime STT failure emits `stt_unavailable` and ignores audio instead of dropping the room |
+| Browser STT needs Chrome/Edge | Medium | `joined.stt` tells the client which mode to use; Firefox users are told to switch browser. Server-side Soniox remains available by flipping one env var |
+| Public Lingva/MyMemory instances go down | Medium | host list + MyMemory fallback + source-text degradation; `TRANSLATE_PROVIDER=llm` with a key is the upgrade path |
 | In-memory state lost on restart | Medium | acceptable in MVP; clients auto-rejoin (same `client_id` evicts the stale socket) |
 | One stuck peer stalls the room | Low | broadcasts are parallel with a 5 s per-peer timeout, dead peers are purged |
 | Slow STT socket back-pressures the receive loop | Low | `feed()` awaits the provider send; if this shows up under load, add a bounded audio queue per participant |

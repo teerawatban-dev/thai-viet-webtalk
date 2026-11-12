@@ -1,0 +1,201 @@
+**PROMPTS.md**
+
+```markdown
+# AI / AI UI/UX Prompts
+
+A curated and enhanced collection of effective prompts for UI/UX design work with advanced models like Claude AI (and similar multimodal coding/design agents).
+
+Based on the excellent original thread by [@SKatalystAI](https://x.com/SKatalystAI/status/2120520747550400650).
+
+**Core principle:** Vague instructions produce generic results. Specific constraints, sequential steps, explicit design system limits, and required outputs (screenshots, tables, lists) produce professional, consistent work.
+
+---
+
+## ❌ Dumb / Ineffective Prompts
+
+These are too vague and give the model almost no direction:
+
+- "make my dashboard look modern"
+- "improve this form"
+- "make it work on mobile"
+- "make it accessible"
+
+---
+
+## ✅ Good / Effective Prompts (Original + Enhanced)
+
+### 1. Dashboard Audit & Rebuild
+
+**Original:**
+> Audit this dashboard screenshot. List the 5 biggest hierarchy and density problems first. Then define a spacing scale, type scale and max 5 color tokens. Rebuild using only those. No gradients. Screenshot at 1440 and 390, fix what looks off
+
+**Enhanced version:**
+```
+You are an expert product designer specializing in data-dense dashboards.
+
+Task:
+1. Analyze the attached dashboard screenshot.
+2. List the **5 biggest hierarchy and density problems** (be specific about visual weight, scanning patterns, and information architecture).
+3. Define a strict design system:
+   - Spacing scale (e.g. 4/8/12/16/24/32/48)
+   - Type scale (font family, sizes, weights, line-heights)
+   - Maximum 5 color tokens (name them semantically: bg, surface, text, accent, border, etc.)
+4. Rebuild the entire dashboard using **only** the scales and tokens you defined.
+5. Constraints:
+   - No gradients
+   - No shadows heavier than a subtle elevation
+   - Maintain all existing data and functionality
+6. After rebuilding, take screenshots at 1440px and 390px widths.
+7. List any remaining visual issues at each breakpoint and fix them.
+
+Output format:
+- Problems list
+- Design system tokens
+- Rebuilt code / description
+- Screenshots analysis
+```
+
+### 2. Form Optimization for Completion Rate
+
+**Original:**
+> Rework this form for completion rate. Single column, labels above inputs, validate on blur, not keystroke. Errors say what to do. Add focus, disabled, loading and error states. Don't change field order or API calls
+
+**Enhanced version:**
+```
+You are a conversion-focused UX designer and front-end engineer.
+
+Task: Optimize the attached form for maximum completion rate.
+
+Requirements:
+- Single column layout
+- Labels positioned above inputs (not floating or side)
+- Validation only on blur (or submit), never on every keystroke
+- Error messages must be actionable ("Enter a valid email address" not "Invalid")
+- Implement full interaction states for every field and the submit button:
+  - Default
+  - Focus (visible ring)
+  - Filled
+  - Disabled
+  - Loading
+  - Error
+- Do **not** change field order, names, or any existing API calls / form submission logic
+- Keep accessibility in mind (proper label associations, aria-invalid, etc.)
+
+After changes:
+1. Explain the key UX decisions and expected impact on completion rate
+2. Provide the updated form code
+3. Describe or show the visual states
+```
+
+### 3. Responsive Design Pass
+
+**Original:**
+> Make this responsive at 390, 768 and 1440. Tap targets 44px+. Tables become stacked cards under 768. No horizontal scroll. Don't touch the desktop layout. Screenshot each breakpoint and list what broke
+
+**Enhanced version:**
+```
+You are a senior front-end engineer focused on mobile-first responsive design.
+
+Task: Make the attached UI fully responsive.
+
+Breakpoints to support:
+- 390px (mobile)
+- 768px (tablet)
+- 1440px (desktop)
+
+Strict requirements:
+- Minimum tap target size: 44×44px
+- Tables convert to stacked cards below 768px
+- Zero horizontal scrolling at any breakpoint
+- Do **not** change the desktop (1440px) layout or visual design
+- Preserve all content and functionality
+
+Process:
+1. Implement the responsive changes
+2. Generate or describe screenshots at each of the three breakpoints
+3. For each breakpoint, list anything that still looks broken or suboptimal
+4. Fix the issues found in step 3
+
+Output the final responsive code + the analysis.
+```
+
+### 4. Accessibility (WCAG 2.2 AA) Audit & Fix
+
+**Original:**
+> Run a WCAG 2.2 AA pass. Fix contrast under 4.5:1, add visible focus rings, keyboard nav and aria labels on icon buttons. Respect reduced motion. Output a table: issue, before, after
+
+**Enhanced version:**
+```
+You are an accessibility specialist (WCAG 2.2 AA expert).
+
+Task: Perform a thorough WCAG 2.2 AA audit on the attached UI / code and fix all issues.
+
+Priority areas:
+- Color contrast (text and non-text) — minimum 4.5:1 for normal text, 3:1 for large text / UI components
+- Visible focus indicators on all interactive elements
+- Full keyboard navigation (logical tab order, no traps)
+- Proper ARIA labels / roles on icon-only buttons and custom controls
+- Respect `prefers-reduced-motion`
+- Semantic HTML where possible
+- Form labels and error associations
+
+Process:
+1. Audit the current state
+2. Fix every identified issue
+3. Output a clear table with columns:
+   | Issue | Severity | Before | After | WCAG Criterion |
+
+Also provide the updated code and a short summary of remaining residual risks (if any).
+```
+
+---
+
+## Extra High-Value Prompts
+
+### Component Library / Design System Extraction
+```
+Extract a reusable design system from this UI.
+Output:
+- Spacing scale
+- Typography scale
+- Color tokens (semantic)
+- Border radius, shadows, elevations
+- Component variants (button primary/secondary/ghost, inputs, cards, etc.)
+Provide both Tailwind config style tokens and CSS custom properties.
+```
+
+### Dark Mode Conversion
+```
+Convert this interface to a high-quality dark mode.
+Rules:
+- Maintain the same visual hierarchy and information density
+- Use a proper dark surface scale (not pure black)
+- Ensure all contrast ratios still meet WCAG AA
+- Adjust any illustrations or charts for dark backgrounds
+- Provide both light and dark versions side-by-side if possible
+```
+
+### Micro-interactions & Polish
+```
+Add subtle, purposeful micro-interactions to this UI without making it feel gimmicky.
+Focus on:
+- Hover and focus states
+- Loading skeletons or progressive disclosure
+- Success / error feedback
+- Smooth transitions that respect reduced-motion
+Keep performance high and motion minimal.
+```
+
+---
+
+## Prompting Tips for AI / Advanced Models
+
+1. Always attach the screenshot or current code.
+2. Force sequential reasoning ("List problems first, then define system, then rebuild").
+3. Constrain the design system (max colors, no gradients, specific scales).
+4. Demand specific outputs (tables, lists of issues, screenshots at exact widths).
+5. Explicitly protect existing functionality ("Don't change field order or API calls").
+6. Ask for before/after comparison or residual issues.
+
+These structured prompts consistently produce much higher quality results than open-ended requests.
+```

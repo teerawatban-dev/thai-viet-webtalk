@@ -34,13 +34,15 @@ class Settings(BaseSettings):
     )
 
     # --- speech to text ---
-    stt_provider: str = "mock"
+    # browser: Web Speech API in the client (free, no key, no audio upload)
+    stt_provider: str = "browser"
     stt_api_key: str = ""
     stt_model: str = "stt-rt-v4"
     stt_ws_url: str = "wss://stt-rt.soniox.com/transcribe-websocket"
 
     # --- translation ---
-    translate_provider: str = "passthrough"
+    # lingva: key-free public Google proxy, MyMemory fallback
+    translate_provider: str = "lingva"
     translate_api_key: str = ""
     translate_model: str = "gpt-4o-mini"
     translate_base_url: str = "https://api.openai.com/v1"

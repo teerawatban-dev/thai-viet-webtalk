@@ -9,9 +9,11 @@ from __future__ import annotations
 import logging
 
 from backend.adapters.stt.base import STTProvider
+from backend.adapters.stt.browser import BrowserProvider
 from backend.adapters.stt.mock import MockProvider
 from backend.adapters.stt.soniox import SonioxProvider
 from backend.adapters.translate.base import Translator
+from backend.adapters.translate.lingva import LingvaTranslator
 from backend.adapters.translate.llm import LLMTranslator
 from backend.adapters.translate.passthrough import PassthroughTranslator
 from backend.config import Settings
@@ -21,6 +23,10 @@ log = logging.getLogger(__name__)
 
 def build_stt_provider(settings: Settings) -> STTProvider:
     requested = settings.stt_provider.strip().lower()
+
+    if requested == "browser":
+        log.info("stt provider: browser (Web Speech API, client-side)")
+        return BrowserProvider()
 
     if requested == "soniox":
         if settings.key_for("soniox"):
@@ -41,6 +47,10 @@ def build_stt_provider(settings: Settings) -> STTProvider:
 
 def build_translator(settings: Settings) -> Translator:
     requested = settings.translate_provider.strip().lower()
+
+    if requested == "lingva":
+        log.info("translator: lingva (key-free, public instances + mymemory fallback)")
+        return LingvaTranslator()
 
     if requested == "llm":
         if settings.key_for("llm"):

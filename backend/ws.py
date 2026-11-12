@@ -30,6 +30,7 @@ SAMPLE_RATE = 16_000
 
 MAX_AUDIO_CHUNK_BYTES = 64 * 1024
 MAX_TEXT_MESSAGE_BYTES = 8 * 1024
+MAX_TRANSCRIPT_CHARS = 2_000
 
 
 def _valid_id(value: str) -> bool:
@@ -160,6 +161,9 @@ async def _handle_audio(room: Room, participant: Participant, audio: bytes) -> N
     if participant.pipeline is None:
         # Audio before `join`: ignore instead of buffering unbounded data.
         return
+    if getattr(participant.pipeline, "provider_name", "") == "browser":
+        # Browser STT mode: audio is recognised client-side, nothing to do.
+        return
     await participant.pipeline.feed(audio)
     _ = room  # reserved for future VAD / per-room metering
 
@@ -195,6 +199,10 @@ async def _handle_control(
 
     if kind == "set_lang":
         await _on_set_lang(websocket, room, participant, payload)
+        return True
+
+    if kind == "transcript":
+        await _on_transcript(websocket, participant, payload)
         return True
 
     if kind == "end_utterance":
@@ -243,6 +251,7 @@ async def _on_join(
             "room_id": room.room_id,
             "lang": participant.lang,
             "sample_rate": SAMPLE_RATE,
+            "stt": state.provider.name,
             "targets": settings.targets,
             "participants": [
                 p.public_view()
@@ -264,6 +273,31 @@ async def _on_join(
         )
         if dead:
             room.schedule_purge(dead)
+
+
+async def _on_transcript(
+    websocket: WebSocket,
+    participant: Participant,
+    payload: dict,
+) -> None:
+    """Client-side STT: the browser already recognised the speech."""
+    text = payload.get("text")
+    if not isinstance(text, str) or not text.strip():
+        await _send_error(websocket, "bad_message", "transcript text required")
+        return
+    if len(text) > MAX_TRANSCRIPT_CHARS:
+        await _send_error(websocket, "bad_message", "transcript too long")
+        return
+
+    pipeline = participant.pipeline
+    if pipeline is None:
+        await _send_error(websocket, "bad_message", "join before sending transcripts")
+        return
+
+    if payload.get("is_final", True):
+        await pipeline.submit_final(text)
+    else:
+        await pipeline.submit_partial(text)
 
 
 async def _on_set_lang(

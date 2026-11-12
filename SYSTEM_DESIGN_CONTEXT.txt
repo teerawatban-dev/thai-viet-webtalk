@@ -1,0 +1,45 @@
+Here's a ready-to-use `SYSTEM_DESIGN_CONTEXT.md` file based on the popular "System Design in 12 lines" cheat sheet:
+
+```markdown
+# System Design Context
+
+A concise reference of common system design problems and their standard solutions.
+
+## System Design in 12 Lines
+
+| Problem                        | Solution                          |
+|--------------------------------|-----------------------------------|
+| Slow reads                     | Add a cache                       |
+| Write spikes                   | Buffer with a queue               |
+| Too much traffic               | Add a load balancer               |
+| Read-heavy DB                  | Add read replicas                 |
+| Write-heavy DB                 | Shard the data                    |
+| Slow queries                   | Add indexes                       |
+| Slow file loads                | Object storage + CDN              |
+| Temporary failures             | Retry with backoff                |
+| Too many requests              | Rate limiting                     |
+| One service failing            | Circuit breaker                   |
+| Duplicate requests             | Idempotency keys                  |
+| Can’t see what broke           | Logs, metrics, tracing            |
+
+## Quick Notes
+
+- **Cache**: Redis, Memcached, or application-level caching for frequently accessed data.
+- **Queue**: Kafka, RabbitMQ, SQS, etc., to absorb write bursts.
+- **Load Balancer**: Nginx, HAProxy, AWS ALB/NLB, or cloud equivalents.
+- **Read Replicas**: Horizontal scaling for read-heavy workloads (eventual consistency trade-off).
+- **Sharding**: Partition data by key (user_id, tenant_id, etc.) to distribute write load.
+- **Indexes**: Database indexes (B-tree, etc.) — be mindful of write overhead.
+- **Object Storage + CDN**: S3 + CloudFront, GCS + CDN, etc.
+- **Retry with Backoff**: Exponential backoff + jitter to avoid thundering herd.
+- **Rate Limiting**: Token bucket, sliding window, or fixed window algorithms.
+- **Circuit Breaker**: Fail fast and recover gracefully (e.g., Hystrix, Resilience4j).
+- **Idempotency Keys**: Ensure safe retries for non-idempotent operations.
+- **Observability**: Structured logs + metrics (Prometheus) + distributed tracing (Jaeger/OpenTelemetry).
+
+---
+
+*Source: Popular system design cheat sheet shared widely among engineers.*
+```
+
+You can copy the content above and save it as `SYSTEM_DESIGN_CONTEXT.md`.

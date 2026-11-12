@@ -71,6 +71,7 @@ def test_join_returns_joined_payload(client):
         "room_id": "room-a",
         "lang": "th",
         "sample_rate": 16_000,
+        "stt": "mock",
         "targets": ["th", "vi", "en"],
         "participants": [],
     }

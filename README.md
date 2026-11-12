@@ -7,7 +7,7 @@ translated on the other side in about a second.
 > Product/architecture decisions live in **[DEVELOPER_CONTEXT.md](DEVELOPER_CONTEXT.md)**.
 > Read that first — this file is only "how to run it".
 
-## Quick start (offline, no API keys)
+## Quick start (free mode — no API keys)
 
 ```bash
 python -m venv .venv
@@ -17,14 +17,18 @@ copy .env.example .env
 uvicorn backend.main:app --reload --port 8000
 ```
 
-Open <http://localhost:8000>, keep the room id, pick **ฉันพูดภาษาไทย**, press
-**Join**, then **Start mic**. Open a second browser window with the same
-`?room=` URL, pick **Tôi nói tiếng Việt**, and speak.
+Open <http://localhost:8000> in **Chrome or Edge**, keep the room id, pick
+**ฉันพูดภาษาไทย**, press **Join**, then **Start mic**. Open a second window with
+the same `?room=` URL, pick **Tôi nói tiếng Việt**, and speak.
 
-With `STT_PROVIDER=mock` / `TRANSLATE_PROVIDER=passthrough` you get placeholder
-transcripts (`[mock th final · 2.4s]` → `[vi] [mock th final · 2.4s]`). That is
-the expected offline behaviour: it proves routing, rooms, and the audio path
-without spending money.
+How it works in free mode:
+
+- the **browser** does speech recognition (Web Speech API) — no audio is uploaded
+- the server translates with **Lingva** (key-free Google proxy, MyMemory fallback)
+- total cost: $0, no accounts, no keys
+
+> Firefox has no Web Speech API. Set `STT_PROVIDER=soniox` (server-side audio)
+> for other browsers.
 
 ## Turn on real translation
 

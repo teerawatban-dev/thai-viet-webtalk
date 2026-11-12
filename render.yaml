@@ -13,11 +13,11 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: STT_PROVIDER
-        value: mock
+        value: browser         # Web Speech API in the browser: free, no key
       - key: STT_API_KEY
         sync: false
       - key: TRANSLATE_PROVIDER
-        value: passthrough
+        value: lingva          # key-free public translation, no account needed
       - key: TRANSLATE_API_KEY
         sync: false
       - key: TRANSLATE_MODEL

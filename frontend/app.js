@@ -15,6 +15,9 @@ const SPEECH_PEAK = 0.02; // frame considered speech above this peak
 const SILENCE_HANG_MS = 700; // stop streaming after this much silence
 const PING_INTERVAL_MS = 20000;
 const LANGS = ["th", "vi", "en"];
+const LANG_TAGS = { th: "th-TH", vi: "vi-VN", en: "en-US" };
+const SpeechRecognitionImpl =
+  window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
 const el = {
   room: document.getElementById("roomInput"),
@@ -29,6 +32,7 @@ const el = {
   share: document.getElementById("shareBtn"),
   peerLabel: document.getElementById("peerLabel"),
   selfLabel: document.getElementById("selfLabel"),
+  modeHint: document.getElementById("modeHint"),
 };
 
 const state = {
@@ -42,6 +46,10 @@ const state = {
   reconnectTimer: null,
   pingTimer: null,
   micWanted: false,
+  sttMode: "server",
+  recognition: null,
+  recogWanted: false,
+  recogRestartTimer: null,
   audio: {
     ctx: null,
     stream: null,
@@ -229,9 +237,23 @@ function handleMessage(msg) {
       el.peerLabel.textContent = peers.length
         ? peers.map((p) => langName(p.lang)).join(", ")
         : "waiting…";
-      el.meta.textContent = `room ${msg.room_id} · you ${msg.client_id}`;
+      state.sttMode = msg.stt === "browser" ? "browser" : "server";
+      el.meta.textContent = `room ${msg.room_id} · you ${msg.client_id} · stt ${state.sttMode}`;
+      el.modeHint.textContent =
+        state.sttMode === "browser"
+          ? `browser STT (${LANG_TAGS[state.lang] || "th-TH"}) · key-free translation`
+          : "server STT";
       setStatus(`in room · ${peers.length + 1}`, "live");
-      if (state.micWanted && !state.audio.running) startMic();
+
+      if (state.sttMode === "browser" && !SpeechRecognitionImpl) {
+        setStatus("use Chrome/Edge", "err");
+      }
+
+      if (state.sttMode === "browser") {
+        if (state.recogWanted && !state.recognition) startRecognition();
+      } else if (state.micWanted && !state.audio.running) {
+        startMic();
+      }
       break;
     }
 
@@ -541,6 +563,93 @@ function stopMic() {
   el.mic.classList.remove("on");
 }
 
+/* ------------------------------------------------- browser speech (free) */
+/* Chrome/Edge run the recogniser and post text, so the server needs no STT
+ * key and no audio upload. Firefox has no implementation. */
+
+function startRecognition() {
+  if (!SpeechRecognitionImpl) {
+    setStatus("needs Chrome/Edge", "err");
+    return;
+  }
+  if (state.recognition) return;
+
+  state.recogWanted = true;
+  const rec = new SpeechRecognitionImpl();
+  rec.lang = LANG_TAGS[state.lang] || "th-TH";
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+
+  rec.onresult = (event) => {
+    for (let i = event.resultIndex; i < event.results.length; i += 1) {
+      const result = event.results[i];
+      const text = (result[0]?.transcript || "").trim();
+      if (!text) continue;
+      sendJSON({ type: "transcript", text, is_final: Boolean(result.isFinal) });
+    }
+  };
+
+  rec.onerror = (event) => {
+    const code = event.error || "error";
+    if (code === "no-speech" || code === "aborted") return;
+    if (code === "not-allowed" || code === "service-not-allowed") {
+      state.recogWanted = false;
+      setStatus("mic blocked", "err");
+      return;
+    }
+    setStatus(`speech: ${code}`, "warn");
+  };
+
+  rec.onend = () => {
+    state.recognition = null;
+    if (state.closing) return;
+    if (state.recogWanted) {
+      // Chrome ends the session on silence; keep it alive.
+      state.recogRestartTimer = setTimeout(() => {
+        try {
+          startRecognition();
+        } catch {
+          /* transient */
+        }
+      }, 300);
+      return;
+    }
+    el.mic.textContent = "● Start mic";
+    el.mic.classList.remove("on");
+  };
+
+  try {
+    rec.start();
+  } catch (err) {
+    console.error(err);
+    state.recogWanted = false;
+    setStatus("speech start failed", "err");
+    return;
+  }
+
+  state.recognition = rec;
+  el.mic.textContent = "■ Stop mic";
+  el.mic.classList.add("on");
+  setStatus("listening (browser)", "live");
+}
+
+function stopRecognition() {
+  state.recogWanted = false;
+  clearTimeout(state.recogRestartTimer);
+  const rec = state.recognition;
+  state.recognition = null;
+  if (rec) {
+    try {
+      rec.stop();
+    } catch {
+      /* already stopped */
+    }
+  }
+  el.mic.textContent = "● Start mic";
+  el.mic.classList.remove("on");
+}
+
 /* ------------------------------------------------------------------- boot */
 
 function joinRoom() {
@@ -566,6 +675,7 @@ function leaveRoom() {
   clearInterval(state.pingTimer);
   sendJSON({ type: "leave" });
   stopMic();
+  stopRecognition();
   try {
     state.ws?.close();
   } catch {
@@ -587,6 +697,14 @@ el.join.addEventListener("click", () => {
 });
 
 el.mic.addEventListener("click", () => {
+  if (state.sttMode === "browser") {
+    if (state.recogWanted) {
+      stopRecognition();
+    } else {
+      startRecognition();
+    }
+    return;
+  }
   if (state.audio.running) {
     stopMic();
   } else {
@@ -621,11 +739,19 @@ el.lang.addEventListener("change", () => {
   saveLang(next);
   el.selfLabel.textContent = langName(next);
   if (state.joined) sendJSON({ type: "set_lang", lang: next });
+
+  // Browser STT bakes the language into the recogniser: restart it.
+  if (state.sttMode === "browser" && state.recogWanted) {
+    const wasWanted = state.recogWanted;
+    stopRecognition();
+    if (wasWanted) startRecognition();
+  }
 });
 
 window.addEventListener("beforeunload", () => {
   state.closing = true;
   stopMic();
+  stopRecognition();
 });
 
 (function boot() {
