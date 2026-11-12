@@ -60,8 +60,14 @@ Blueprint deploy: push the repo, then **New → Blueprint** and point it at
 `render.yaml`. Secrets (`STT_API_KEY`, `TRANSLATE_API_KEY`) are `sync: false`,
 so set them in the dashboard.
 
-Programmatic deploy with the Render API is documented in
-[DEVELOPER_CONTEXT.md §8.3](DEVELOPER_CONTEXT.md).
+CLI deploy (used for this project — the service was created from a public Git
+URL, so there is **no push webhook**):
+
+```bash
+python scripts/deploy_render.py --repo https://github.com/<user>/thai-viet-webtalk --apply
+```
+
+Live: <https://thai-viet-webtalk.onrender.com>
 
 ## Tests
 

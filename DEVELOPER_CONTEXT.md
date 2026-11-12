@@ -435,8 +435,19 @@ curl -s -X POST https://api.render.com/v1/services/$SERVICE_ID/redeploy \
 | URL | **https://thai-viet-webtalk.onrender.com** |
 | First deploy | `dep-dbqp44tibobs73csk360` → `live` |
 | Verified | `/healthz` 200 · `/` 200 (2101 B) · WSS join → `peer_joined` → `partial` → `final{th,en}` |
-| Live providers | `mock` STT + `passthrough` MT — placeholder text until keys are added |
-| Next | add `STT_API_KEY` / `TRANSLATE_API_KEY` in dashboard, flip `STT_PROVIDER=soniox`, `TRANSLATE_PROVIDER=llm`, redeploy |
+| Live providers | `browser` STT (Web Speech API) + `lingva` MT — **$0, no keys** |
+| Verified | `/healthz` ok · WSS `transcript` → real Thai + English output (`สวัสดี ยินดีที่ได้พบคุณ` / `Hello, nice to meet you.`) |
+| Next | human test in Chrome: two tabs, TH + VI |
+
+> **Auto-deploy caveat:** this service was created from a *public Git URL*, not
+> through the GitHub App, so Render receives no push webhook — `autoDeploy` has
+> no effect. After every `git push`, run:
+>
+> ```bash
+> python scripts/deploy_render.py --repo https://github.com/teerawatban-dev/thai-viet-webtalk --apply
+> ```
+>
+> (Connect the GitHub App in the Render dashboard if you want push-to-deploy.)
 
 ---
 
