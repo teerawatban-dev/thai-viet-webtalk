@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketDisconnect, WebSocketState
@@ -164,6 +165,9 @@ async def _handle_audio(room: Room, participant: Participant, audio: bytes) -> N
     if getattr(participant.pipeline, "provider_name", "") == "browser":
         # Browser STT mode: audio is recognised client-side, nothing to do.
         return
+    if not participant.audio_limiter.allow():
+        log.warning("audio rate limit hit for %s", participant.client_id)
+        return
     await participant.pipeline.feed(audio)
     _ = room  # reserved for future VAD / per-room metering
 
@@ -292,6 +296,16 @@ async def _on_transcript(
     pipeline = participant.pipeline
     if pipeline is None:
         await _send_error(websocket, "bad_message", "join before sending transcripts")
+        return
+
+    if not participant.transcript_limiter.allow():
+        now = time.monotonic()
+        if now - participant.rate_warned_at > 3.0:
+            participant.rate_warned_at = now
+            log.warning("transcript rate limit hit for %s", participant.client_id)
+            await _send_error(
+                websocket, "rate_limited", "too many transcripts; slow down"
+            )
         return
 
     if payload.get("is_final", True):

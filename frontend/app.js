@@ -175,7 +175,7 @@ function connect() {
       () => sendJSON({ type: "ping", t: Date.now() }),
       PING_INTERVAL_MS,
     );
-    setStatus("connected", "live");
+    setStatus("joining…", "warn");
   });
 
   socket.addEventListener("message", (event) => {
@@ -197,6 +197,8 @@ function connect() {
     state.ws = null;
     clearInterval(state.pingTimer);
     el.mic.disabled = true;
+    el.join.disabled = false;
+    el.join.textContent = "Join";
 
     if (state.closing) {
       stopMic();
@@ -231,6 +233,7 @@ function handleMessage(msg) {
       el.mic.disabled = false;
       el.copy.disabled = false;
       el.share.disabled = false;
+      el.join.disabled = false;
       el.join.textContent = "Leave";
       el.selfLabel.textContent = langName(state.lang);
       const peers = msg.participants || [];
@@ -666,6 +669,8 @@ function joinRoom() {
   url.searchParams.set("room", room);
   history.replaceState(null, "", url);
 
+  el.join.disabled = true;
+  el.join.textContent = "Connecting…";
   connect();
 }
 

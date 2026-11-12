@@ -24,6 +24,9 @@ log = logging.getLogger(__name__)
 PartialEmitter = Callable[[str], Awaitable[None]]
 FinalEmitter = Callable[[str, dict[str, str], int, str], Awaitable[None]]
 
+#: Browsers occasionally re-emit the same final (recogniser restart, reconnect).
+DEDUPE_WINDOW_S = 5.0
+
 
 class TranscriptPipeline:
     """Owns one STT session plus the translation fan-out for one participant."""
@@ -55,6 +58,8 @@ class TranscriptPipeline:
         self._emit_task: asyncio.Task | None = None
         self._bg_tasks: set[asyncio.Task] = set()
         self._closed = False
+        self._last_final_text = ""
+        self._last_final_at = 0.0
 
     @property
     def provider_name(self) -> str:
@@ -184,6 +189,17 @@ class TranscriptPipeline:
             async with self._emit_lock:
                 if self._closed:
                     return
+
+                now = time.monotonic()
+                if (
+                    clean == self._last_final_text
+                    and now - self._last_final_at < DEDUPE_WINDOW_S
+                ):
+                    log.debug("dropping duplicate final for %s", self.client_id)
+                    return
+                self._last_final_text = clean
+                self._last_final_at = now
+
                 latency_ms = 0
                 if self._utterance_started_at is not None:
                     latency_ms = int(

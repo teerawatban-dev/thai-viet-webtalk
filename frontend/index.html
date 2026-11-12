@@ -22,7 +22,9 @@
     </div>
 
     <div class="controls">
+      <label class="sr-only" for="roomInput">Room ID</label>
       <input id="roomInput" class="room" placeholder="room id" autocomplete="off" />
+      <label class="sr-only" for="langSelect">My language</label>
       <select id="langSelect" aria-label="my language">
         <option value="th">ฉันพูดภาษาไทย</option>
         <option value="vi">Tôi nói tiếng Việt</option>
@@ -30,7 +32,7 @@
       </select>
       <button id="joinBtn" class="primary">Join</button>
       <button id="micBtn" class="mic" disabled>● Start mic</button>
-      <span id="status" class="pill idle">idle</span>
+      <span id="status" class="pill idle" role="status" aria-live="polite">idle</span>
     </div>
   </header>
 

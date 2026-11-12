@@ -83,7 +83,7 @@ app = FastAPI(
 async def healthz() -> dict:
     registry: RoomRegistry = app.state.registry
     stats = registry.stats()
-    return {
+    payload = {
         "status": "ok",
         "stt": app.state.provider.name,
         "translator": app.state.translator.name,
@@ -91,6 +91,10 @@ async def healthz() -> dict:
         "clients": stats["clients"],
         "uptime_s": int(time.time() - app.state.started_at),
     }
+    translator_stats = getattr(app.state.translator, "stats", None)
+    if callable(translator_stats):
+        payload["translate_stats"] = translator_stats()
+    return payload
 
 
 @app.get("/api/rooms", include_in_schema=False)

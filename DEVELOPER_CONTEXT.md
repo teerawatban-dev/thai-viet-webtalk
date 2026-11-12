@@ -89,7 +89,7 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
 | Frontend | **Vanilla HTML/CSS/JS, no build step** | zero Node build on Render, fast cold start, easy debugging |
 | Audio capture | **AudioContext + ScriptProcessor → mono PCM16LE @ 16 kHz, 200 ms frames** | every STT vendor accepts raw PCM; MediaRecorder webm fragments lose their container header after the first chunk |
 | STT | **Browser Web Speech API** by default (`STT_PROVIDER=browser`, free, no key); Soniox realtime behind the same adapter interface for server-side audio | deletes STT cost and upload; Soniox stays for browsers without Web Speech |
-| Translation | **Lingva** (key-free Google proxy, MyMemory fallback) by default; LLM adapter for quality | zero cost out of the box, one env var to upgrade |
+| Translation | **Lingva** (key-free Google proxy) with MyMemory fallback and a **circuit breaker** (2 failed attempts → host skipped for 10 min) | zero cost; production logs showed public Lingva hosts 403/500 constantly, so blind retries had to be capped |
 | TTS | **`edge-tts`** (free, good th-VN voices) | optional, Phase 3 |
 | State | **In-memory dicts** (`rooms`, `clients`) | no DB in MVP; single instance only |
 | Config | `pydantic-settings` reading env vars | fail fast on missing keys |
@@ -113,6 +113,7 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
 | 2026-11-12 | Start with Soniox | native Thai↔Vietnamese realtime support |
 | 2026-11-12 | Raw PCM16 instead of MediaRecorder opus | webm chunks after the first one have no container header, which most STT APIs cannot parse |
 | 2026-11-12 | Default to browser STT + Lingva | $0, no keys, no audio upload; Soniox/LLM remain one env var away |
+| 2026-11-12 | Circuit breaker on public MT hosts | 2026-11-12 Render logs: lingva.ml 403, lingva.garudalinux.org 403, translate.plausibility.cloud 500 — every phrase burned 3 requests (~2.5 s) before MyMemory answered |
 
 ---
 
@@ -242,6 +243,9 @@ Thai and Vietnamese speakers join the same web room from a browser. The browser 
 | Max audio frame | 64 KB (larger frames dropped, logged) |
 | Max control message | 8 KB of UTF-8 |
 | Per-peer send timeout | 5 s, then the peer is purged |
+| Transcript rate limit | 6/s sustained, burst 12 (per client) → `rate_limited`, warned once per 3 s |
+| Audio rate limit | 30 frames/s, burst 60 (200 ms frames = 5/s nominal) |
+| Duplicate finals | identical text within 5 s is dropped |
 | Empty-room GC | 5 minutes |
 | Client heartbeat | `ping` every 20 s |
 
@@ -531,7 +535,7 @@ provider keys, browser test with two humans, Render deploy.
 
 - [ ] Redis pub/sub for multi-instance
 - [ ] Optional auth + room passcodes
-- [ ] Rate limiting and usage metering
+- [ ] Rate limiting and usage metering (per-client token bucket exists; add per-IP + global quotas)
 - [ ] Render Starter plan, metrics, alerting
 
 ---
@@ -575,7 +579,8 @@ Continuous all-day streaming is the cost risk — add a session cap or idle auto
 | Vietnamese diacritics mangled | Medium | UTF-8 end-to-end, no normalization on display |
 | Provider outage | Medium | adapters fall back to offline providers at startup; runtime STT failure emits `stt_unavailable` and ignores audio instead of dropping the room |
 | Browser STT needs Chrome/Edge | Medium | `joined.stt` tells the client which mode to use; Firefox users are told to switch browser. Server-side Soniox remains available by flipping one env var |
-| Public Lingva/MyMemory instances go down | Medium | host list + MyMemory fallback + source-text degradation; `TRANSLATE_PROVIDER=llm` with a key is the upgrade path |
+| Public Lingva/MyMemory instances go down | Medium | circuit breaker skips a host after 2 failures for 10 min; MyMemory fallback; source-text degradation; `TRANSLATE_PROVIDER=llm` with a key is the quality upgrade |
+| MyMemory anonymous quota (5k chars/day) | Medium | per-client transcript rate limit; `/healthz.translate_stats` exposes `fallback`/`failed` counts; LLM adapter is the paid escape hatch |
 | In-memory state lost on restart | Medium | acceptable in MVP; clients auto-rejoin (same `client_id` evicts the stale socket) |
 | One stuck peer stalls the room | Low | broadcasts are parallel with a 5 s per-peer timeout, dead peers are purged |
 | Slow STT socket back-pressures the receive loop | Low | `feed()` awaits the provider send; if this shows up under load, add a bounded audio queue per participant |

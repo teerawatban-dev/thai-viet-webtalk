@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from backend.config import Settings
+from backend.limits import TokenBucket
 from backend.pipeline import TranscriptPipeline
 
 log = logging.getLogger(__name__)
@@ -41,6 +42,15 @@ class Participant:
     warned_oversize: bool = False
     pipeline: TranscriptPipeline | None = None
     joined_at: float = field(default_factory=time.time)
+    #: 6 transcripts/s with a 12-token burst — far above human speech.
+    transcript_limiter: TokenBucket = field(
+        default_factory=lambda: TokenBucket(rate=6.0, capacity=12.0)
+    )
+    #: 200 ms frames = 5/s; allow 30/s so bursts and catch-up still pass.
+    audio_limiter: TokenBucket = field(
+        default_factory=lambda: TokenBucket(rate=30.0, capacity=60.0)
+    )
+    rate_warned_at: float = 0.0
 
     def public_view(self) -> dict[str, str]:
         return {"client_id": self.client_id, "lang": self.lang}
