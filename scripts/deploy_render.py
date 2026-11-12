@@ -175,7 +175,21 @@ def main() -> None:
     )
     if status not in (200, 201, 202):
         raise SystemExit(f"deploy trigger failed: {status} {deploy}")
-    deploy_id = deploy.get("id") or deploy.get("deploy", {}).get("id")
+
+    deploy_id = None
+    if isinstance(deploy, dict):
+        deploy_id = deploy.get("id") or (deploy.get("deploy") or {}).get("id")
+
+    if not deploy_id:
+        # Render sometimes answers 202 with an empty body: fall back to the
+        # newest deploy for this service.
+        status, deploys = call(token, "GET", f"/services/{service_id}/deploys?limit=1")
+        if status == 200 and deploys:
+            entry = deploys[0]
+            deploy_id = (entry.get("deploy", entry) or {}).get("id")
+    if not deploy_id:
+        raise SystemExit(f"could not find a deploy id (last body: {deploy!r})")
+
     print(f"deploy started: {deploy_id}")
 
     final = wait_for_deploy(token, service_id, deploy_id)

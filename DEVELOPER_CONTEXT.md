@@ -416,12 +416,24 @@ curl -s -X POST https://api.render.com/v1/services/$SERVICE_ID/redeploy \
 
 ### 8.4 Post-deploy checklist
 
-- [ ] `https://<host>/healthz` returns `{"status":"ok"}` with HTTP 200
-- [ ] `wss://<host>/ws/test/c1` connects from browser console
-- [ ] Mic permission prompt appears (HTTPS confirmed)
-- [ ] Two tabs, opposite `lang` values, text round-trips
+- [x] `https://thai-viet-webtalk.onrender.com/healthz` returns `{"status":"ok"}` with HTTP 200
+- [x] `wss://.../ws/{room}/{client}` connects from a non-browser client
+- [ ] Mic permission prompt appears (HTTPS confirmed) — needs a browser
+- [ ] Two tabs, opposite `lang` values, text round-trips — automated WSS test passed, human test pending
 - [ ] Uptime monitor pinging `/healthz` every 10 min
-- [ ] Env vars set in dashboard, `.env` git-ignored, token file kept outside the repo
+- [x] Env vars set in dashboard, `.env` git-ignored, token file kept outside the repo
+
+### 8.5 Deployment record (2026-11-12)
+
+| Field | Value |
+|-------|-------|
+| Repo | `https://github.com/teerawatban-dev/thai-viet-webtalk` (public, branch `main`) |
+| Service | `srv-dbqp442fngtc7389hiq0` — `thai-viet-webtalk`, free, `singapore`, 1 instance |
+| URL | **https://thai-viet-webtalk.onrender.com** |
+| First deploy | `dep-dbqp44tibobs73csk360` → `live` |
+| Verified | `/healthz` 200 · `/` 200 (2101 B) · WSS join → `peer_joined` → `partial` → `final{th,en}` |
+| Live providers | `mock` STT + `passthrough` MT — placeholder text until keys are added |
+| Next | add `STT_API_KEY` / `TRANSLATE_API_KEY` in dashboard, flip `STT_PROVIDER=soniox`, `TRANSLATE_PROVIDER=llm`, redeploy |
 
 ---
 
@@ -477,7 +489,7 @@ provider keys, browser test with two humans, Render deploy.
 - [x] TH↔VI translation of finals (passthrough implemented, OpenAI-compatible LLM wired)
 - [x] Bilingual transcript UI, auto-scroll, speaker colour
 - [x] `/healthz`, structured logs, graceful error messages
-- [ ] Public Render deploy verified with two real people
+- [x] Public Render deploy verified (automated WSS round-trip; human test pending)
 - [ ] Provider keys configured (`STT_PROVIDER=soniox`, `TRANSLATE_PROVIDER=llm`)
 
 **Exit criteria:** 10-minute real conversation, p95 text latency < 3 s, no dropped rooms.
