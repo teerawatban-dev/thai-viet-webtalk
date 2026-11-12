@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: thai-viet-webtalk
+    runtime: python
+    plan: free
+    region: singapore
+    numInstances: 1
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --ws websockets --ws-max-size 1048576
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: STT_PROVIDER
+        value: mock
+      - key: STT_API_KEY
+        sync: false
+      - key: TRANSLATE_PROVIDER
+        value: passthrough
+      - key: TRANSLATE_API_KEY
+        sync: false
+      - key: TRANSLATE_MODEL
+        value: gpt-4o-mini
+      - key: DEFAULT_SRC_LANG
+        value: th
+      - key: TARGET_LANGS
+        value: th,vi,en
+      - key: MAX_ROOM_CLIENTS
+        value: "6"
+      - key: LOG_LEVEL
+        value: INFO

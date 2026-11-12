@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>THAI ⇄ VIET · WebTalk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600&family=Noto+Sans:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="flag">🇹🇭</span>
+      <h1>WebTalk</h1>
+      <span class="flag">🇻🇳</span>
+      <span class="tag">real-time</span>
+    </div>
+
+    <div class="controls">
+      <input id="roomInput" class="room" placeholder="room id" autocomplete="off" />
+      <select id="langSelect" aria-label="my language">
+        <option value="th">ฉันพูดภาษาไทย</option>
+        <option value="vi">Tôi nói tiếng Việt</option>
+        <option value="en">I speak English</option>
+      </select>
+      <button id="joinBtn" class="primary">Join</button>
+      <button id="micBtn" class="mic" disabled>● Start mic</button>
+      <span id="status" class="pill idle">idle</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="col">
+      <h2>They said <small id="peerLabel">—</small></h2>
+      <div id="incoming" class="feed" aria-live="polite"></div>
+      <div class="hint">Translated into your language.</div>
+    </section>
+
+    <section class="col">
+      <h2>You said <small id="selfLabel">—</small></h2>
+      <div id="outgoing" class="feed" aria-live="polite"></div>
+      <div class="hint">Original text, plus what the other side receives.</div>
+    </section>
+  </main>
+
+  <footer class="bar foot">
+    <span id="meta" class="meta">not connected</span>
+    <div class="foot-actions">
+      <button id="copyBtn" disabled>Copy transcript</button>
+      <button id="shareBtn" disabled>Copy invite link</button>
+    </div>
+  </footer>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
